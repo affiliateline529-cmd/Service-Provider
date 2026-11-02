@@ -9,14 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -24,29 +23,9 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Build APK if Android project exists
-        run: |
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug
-          else
-            echo "Android Gradle project not found."
-            echo "This repository needs Android packaging setup."
-            exit 1
-          fi
-
-      - name: Upload APK
+      - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
-          name: Service-Provider-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: Service-Provider-Build
+          path: dist/
           
