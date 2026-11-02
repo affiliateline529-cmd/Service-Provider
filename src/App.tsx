@@ -52,6 +52,44 @@ function MainApp() {
   // Category search in categories tab
   const [categorySearch, setCategorySearch] = useState('');
 
+  // Handle URL deep links (?biz=... or ?business=...)
+  useEffect(() => {
+    const checkDeepLink = () => {
+      const params = new URLSearchParams(window.location.search);
+      const bizId = params.get('biz') || params.get('business');
+      if (bizId) {
+        setSelectedBusinessId(bizId);
+      }
+    };
+    checkDeepLink();
+    window.addEventListener('popstate', checkDeepLink);
+    return () => window.removeEventListener('popstate', checkDeepLink);
+  }, []);
+
+  const handleOpenBusiness = (biz: Business | string) => {
+    const id = typeof biz === 'string' ? biz : biz.id;
+    setSelectedBusinessId(id);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('biz', id);
+      window.history.pushState({ bizId: id }, '', url.toString());
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleCloseBusiness = () => {
+    setSelectedBusinessId(null);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('biz');
+      url.searchParams.delete('business');
+      window.history.pushState({}, '', url.toString());
+    } catch {
+      // Fallback
+    }
+  };
+
   // Fetch businesses from backend API
   const fetchBusinesses = async () => {
     setLoading(true);
@@ -382,7 +420,7 @@ function MainApp() {
                       <div key={biz.id} className="w-72 shrink-0">
                         <BusinessCard
                           business={biz}
-                          onSelect={b => setSelectedBusinessId(b.id)}
+                          onSelect={b => handleOpenBusiness(b.id)}
                           onContact={b => setContactBusiness(b)}
                         />
                       </div>
@@ -446,7 +484,7 @@ function MainApp() {
                     <BusinessCard
                       key={biz.id}
                       business={biz}
-                      onSelect={b => setSelectedBusinessId(b.id)}
+                      onSelect={b => handleOpenBusiness(b.id)}
                       onContact={b => setContactBusiness(b)}
                     />
                   ))}
@@ -479,7 +517,7 @@ function MainApp() {
                     <BusinessCard
                       key={biz.id}
                       business={biz}
-                      onSelect={b => setSelectedBusinessId(b.id)}
+                      onSelect={b => handleOpenBusiness(b.id)}
                       onContact={b => setContactBusiness(b)}
                     />
                   ))}
@@ -512,7 +550,7 @@ function MainApp() {
                     <BusinessCard
                       key={biz.id}
                       business={biz}
-                      onSelect={b => setSelectedBusinessId(b.id)}
+                      onSelect={b => handleOpenBusiness(b.id)}
                       onContact={b => setContactBusiness(b)}
                     />
                   ))}
@@ -739,7 +777,7 @@ function MainApp() {
                     <BusinessCard
                       key={biz.id}
                       business={biz}
-                      onSelect={b => setSelectedBusinessId(b.id)}
+                      onSelect={b => handleOpenBusiness(b.id)}
                       onContact={b => setContactBusiness(b)}
                     />
                   ))}
@@ -851,7 +889,7 @@ function MainApp() {
                     <BusinessCard
                       key={biz.id}
                       business={biz}
-                      onSelect={b => setSelectedBusinessId(b.id)}
+                      onSelect={b => handleOpenBusiness(b.id)}
                       onContact={b => setContactBusiness(b)}
                     />
                   ))}
@@ -1065,7 +1103,7 @@ function MainApp() {
         {selectedBusinessId && (
           <BusinessDetailsModal
             businessId={selectedBusinessId}
-            onClose={() => setSelectedBusinessId(null)}
+            onClose={handleCloseBusiness}
             onUpdateBusiness={updated => {
               setBusinesses(prev => prev.map(b => b.id === updated.id ? updated : b));
             }}

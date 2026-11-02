@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   X, Star, MapPin, Phone, MessageSquare, Heart, Clock,
   ShieldCheck, Share2, Store, Home, CheckCircle2, ChevronRight,
-  Sparkles, AlertCircle, Edit, Trash2
+  Sparkles, AlertCircle, Edit, Trash2, Copy, Check, ExternalLink,
+  Send, Mail, Smartphone, Globe
 } from 'lucide-react';
 import { Business, Review } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -25,7 +26,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [shareSuccess, setShareSuccess] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     fetchBusinessDetails();
@@ -49,7 +51,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   };
 
   const handleReviewSuccess = (savedReview: Review) => {
-    // Refresh details to get updated ratings & review count
     fetchBusinessDetails();
   };
 
@@ -67,20 +68,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     }
   };
 
-  const handleShare = () => {
-    if (navigator.share && business) {
-      navigator.share({
-        title: `${business.businessName} - Karachi`,
-        text: `Check out ${business.businessName} in ${business.karachiArea}, Karachi on Service Provider catalogue!`,
-        url: window.location.href
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      setShareSuccess(true);
-      setTimeout(() => setShareSuccess(false), 2000);
-    }
-  };
-
   if (loading && !business) {
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -94,10 +81,43 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
   if (!business) return null;
 
+  // Generate permanent, shareable deep link
+  const deepLink = `${window.location.origin}${window.location.pathname}?biz=${business.id}`;
+  const shareTitle = `${business.businessName} - ${business.category} in ${business.karachiArea}, Karachi`;
+  const shareText = `Check out ${business.businessName} (${business.category}) in ${business.karachiArea}, Karachi on the Service Provider catalogue! ⭐ ${business.rating > 0 ? business.rating : 'New'} rating.`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(deepLink);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleNativeShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: deepLink
+      }).catch(() => {
+        setShowShareModal(true);
+      });
+    } else {
+      setShowShareModal(true);
+    }
+  };
+
   const favorite = isFavorite(business.id);
   const cleanMobile = business.mobile.replace(/\D/g, '');
   const cleanWaNumber = (business.whatsappNumber || business.mobile).replace(/\D/g, '');
   const waUrl = `https://wa.me/92${cleanWaNumber.startsWith('0') ? cleanWaNumber.substring(1) : cleanWaNumber}?text=${encodeURIComponent(`Assalam-o-Alaikum, I found "${business.businessName}" on the Karachi Service Provider catalogue. I would like to inquire about your services in ${business.karachiArea}.`)}`;
+
+  // Social Sharing URLs with deep link
+  const waShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareText}\n\n👉 View business profile & contact: ${deepLink}`)}`;
+  const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(deepLink)}`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(deepLink)}`;
+  const linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(deepLink)}`;
+  const smsShareUrl = `sms:?body=${encodeURIComponent(`${shareText} ${deepLink}`)}`;
+  const emailShareUrl = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(`Hello,\n\nI wanted to share this verified Karachi service provider with you:\n\n${business.businessName}\nCategory: ${business.category}\nArea: ${business.karachiArea}, Karachi\nPhone: ${business.mobile}\n\nView complete business details, reviews & photos:\n${deepLink}`)}`;
 
   // Find if current user already reviewed this business
   const myExistingReview = reviews.find(
@@ -121,11 +141,11 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-1.5 shrink-0">
-            {/* Share */}
+            {/* Social Share Button */}
             <button
-              onClick={handleShare}
-              className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition"
-              title="Share Listing"
+              onClick={() => setShowShareModal(true)}
+              className="p-2 rounded-full hover:bg-blue-50 text-blue-700 transition flex items-center space-x-1"
+              title="Share Deep Link"
             >
               <Share2 className="w-4 h-4" />
             </button>
@@ -150,12 +170,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
             </button>
           </div>
         </div>
-
-        {shareSuccess && (
-          <div className="bg-emerald-600 text-white text-xs py-1 px-4 text-center font-medium animate-in fade-in">
-            ✓ Link copied to clipboard!
-          </div>
-        )}
 
         {/* Modal Scrollable Content */}
         <div className="flex-1 overflow-y-auto pb-24">
@@ -191,6 +205,16 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Quick Share Floating Button on Cover */}
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="absolute top-3 right-3 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition shadow-md flex items-center space-x-1.5 group"
+              title="Share Deep Link to this Karachi Profile"
+            >
+              <Share2 className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition" />
+              <span className="text-[11px] font-bold text-white pr-1">Share</span>
+            </button>
 
             {/* Business Logo & Name overlay */}
             <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
@@ -254,6 +278,37 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   <span>Verified</span>
                 </span>
+              </div>
+            </div>
+
+            {/* Social Share Callout Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="space-y-0.5">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-300">
+                  <Share2 className="w-4 h-4" />
+                  <span>Shareable Profile Deep Link</span>
+                </div>
+                <p className="text-[11px] text-blue-200">
+                  Send this business profile to friends or clients in Karachi via WhatsApp, SMS, or Social Media.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  onClick={handleCopyLink}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition flex items-center space-x-1.5 active:scale-95"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-xs transition flex items-center space-x-1.5 active:scale-95"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Share</span>
+                </button>
               </div>
             </div>
 
@@ -409,20 +464,30 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
         </div>
 
         {/* Sticky Android Bottom Action Bar */}
-        <div className="sticky bottom-0 z-20 bg-white border-t border-slate-200 px-4 py-3 shadow-lg flex items-center justify-between gap-3">
+        <div className="sticky bottom-0 z-20 bg-white border-t border-slate-200 px-4 py-3 shadow-lg flex items-center justify-between gap-2.5">
+          {/* Social Share Button in Bottom Bar */}
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="flex items-center justify-center space-x-1.5 py-3 px-3.5 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-900 font-bold text-xs shadow-xs transition active:scale-95 shrink-0"
+            title="Share Profile"
+          >
+            <Share2 className="w-4 h-4 text-blue-700" />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+
           <a
             href={`tel:${business.mobile}`}
-            className="flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs shadow-md transition active:scale-95"
+            className="flex-1 flex items-center justify-center space-x-2 py-3 px-3 rounded-xl bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs shadow-md transition active:scale-95"
           >
             <Phone className="w-4 h-4" />
-            <span>Call Now ({business.mobile})</span>
+            <span className="truncate">Call Now ({business.mobile})</span>
           </a>
 
           <a
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition active:scale-95"
+            className="flex-1 flex items-center justify-center space-x-2 py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition active:scale-95"
           >
             <MessageSquare className="w-4 h-4" />
             <span>WhatsApp</span>
@@ -438,6 +503,164 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
           onClose={() => setShowReviewModal(false)}
           onSuccess={handleReviewSuccess}
         />
+      )}
+
+      {/* Social Share Modal Dialog (Deep Link Generator) */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl relative animate-in slide-in-from-bottom duration-250">
+            {/* Android pull bar */}
+            <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-4 sm:hidden" />
+
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                  <Share2 className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Share Business Profile</h3>
+                  <p className="text-[11px] text-slate-500">Shareable deep link for {business.karachiArea}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              {/* Profile Mini Card Preview */}
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center space-x-3">
+                <img
+                  src={business.logo || photos[0]}
+                  alt=""
+                  className="w-12 h-12 rounded-xl object-cover border border-white shadow-xs"
+                />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xs font-bold text-slate-900 truncate">{business.businessName}</h4>
+                  <p className="text-[11px] text-blue-700 font-medium truncate">{business.category}</p>
+                  <p className="text-[10px] text-slate-500 flex items-center space-x-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span>{business.karachiArea}, Karachi</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Shareable Deep Link Box */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                  Direct Profile Deep Link
+                </label>
+                <div className="flex items-center space-x-2">
+                  <div className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-mono text-slate-700 truncate select-all">
+                    {deepLink}
+                  </div>
+                  <button
+                    onClick={handleCopyLink}
+                    className="px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-xs transition flex items-center space-x-1.5 shrink-0 active:scale-95"
+                  >
+                    {copiedLink ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedLink ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+                {copiedLink && (
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-1.5 flex items-center space-x-1 animate-in fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Deep link copied! Anyone with this link will open this exact business.</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Social Share Grid */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-2">
+                  Share via Social Apps
+                </label>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {/* WhatsApp */}
+                  <a
+                    href={waShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex flex-col items-center justify-center transition group active:scale-95"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-1 shadow-xs group-hover:scale-105 transition">
+                      <MessageSquare className="w-5 h-5 fill-current" />
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-900">WhatsApp</span>
+                  </a>
+
+                  {/* Facebook */}
+                  <a
+                    href={fbShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 flex flex-col items-center justify-center transition group active:scale-95"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#1877F2] text-white flex items-center justify-center mb-1 shadow-xs group-hover:scale-105 transition">
+                      <Globe className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-900">Facebook</span>
+                  </a>
+
+                  {/* Twitter / X */}
+                  <a
+                    href={twitterShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex flex-col items-center justify-center transition group active:scale-95"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center mb-1 shadow-xs group-hover:scale-105 transition">
+                      <Send className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-900">X (Twitter)</span>
+                  </a>
+
+                  {/* Email */}
+                  <a
+                    href={emailShareUrl}
+                    className="p-2.5 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 flex flex-col items-center justify-center transition group active:scale-95"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-1 shadow-xs group-hover:scale-105 transition">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-900">Email</span>
+                  </a>
+                </div>
+
+                {/* Additional Options: SMS & Native Share */}
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <a
+                    href={smsShareUrl}
+                    className="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95"
+                  >
+                    <Smartphone className="w-4 h-4 text-slate-500" />
+                    <span>Send SMS</span>
+                  </a>
+
+                  <button
+                    onClick={handleNativeShare}
+                    className="py-2.5 px-3 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95"
+                  >
+                    <Share2 className="w-4 h-4 text-blue-700" />
+                    <span>More Options</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
