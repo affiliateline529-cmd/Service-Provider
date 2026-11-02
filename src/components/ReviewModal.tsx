@@ -16,7 +16,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, sessionToken } = useAuth();
   const [rating, setRating] = useState<number>(existingReview?.rating || 5);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState<string>(existingReview?.comment || '');
@@ -52,9 +52,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
     try {
       const customerId = currentUser?.id || `guest-${Date.now()}`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (sessionToken) headers['Authorization'] = `Bearer ${sessionToken}`;
+      if (currentUser?.id) headers['x-user-id'] = currentUser.id;
+
       const res = await fetch(`/api/businesses/${business.id}/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           customerId,
           customerName: name.trim(),

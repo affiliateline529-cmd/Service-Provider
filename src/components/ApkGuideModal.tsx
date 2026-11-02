@@ -47,7 +47,7 @@ export const ApkGuideModal: React.FC<ApkGuideModalProps> = ({ onClose }) => {
     setTimeout(() => setCopiedApkLink(false), 2000);
   };
 
-  const shareText = `Download "Service Provider – All Services" Android APK for Karachi, Pakistan!\nFind verified electricians, plumbers, shops & mechanics across Karachi:\n${downloadUrl}`;
+  const shareText = `Download "Service Provider – All Services Karachi" Android APK for Karachi, Pakistan!\nFind verified electricians, plumbers, shops & mechanics across Karachi:\n${downloadUrl}`;
   const waShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
 
   return (
@@ -64,7 +64,7 @@ export const ApkGuideModal: React.FC<ApkGuideModalProps> = ({ onClose }) => {
                 Android Package Kit (APK)
               </span>
               <h2 className="text-base font-extrabold text-slate-900 mt-0.5">
-                Download Service Provider APK
+                Download Service Provider – All Services Karachi APK
               </h2>
             </div>
           </div>

@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { KARACHI_CATEGORIES } from './src/data/categories.js';
@@ -15,7 +17,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// Trust proxy for secure cookies over HTTPS in Cloud Run / reverse proxies
+app.set('trust proxy', true);
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // Database file path
 const DATA_DIR = path.join(__dirname, 'data');
@@ -426,7 +432,108 @@ app.delete('/api/admin/reviews/:id', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Review deleted successfully by administrator' });
 });
 
-// Authentication
+// ================= AUTHENTICATION & SECURE COOKIE HELPERS =================
+const AUTH_SECRET = process.env.AUTH_SECRET || 'karachi-service-provider-secret-key-2026';
+
+interface TokenPayload {
+  userId: string;
+  email: string;
+  role: string;
+  exp: number; // timestamp in seconds
+}
+
+function generateSessionToken(user: User): string {
+  const payload: TokenPayload = {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days
+  };
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', AUTH_SECRET).update(payloadBase64).digest('base64url');
+  return `${payloadBase64}.${signature}`;
+}
+
+function verifySessionToken(token: string): TokenPayload | null {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [payloadBase64, signature] = parts;
+  try {
+    const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(payloadBase64).digest('base64url');
+    if (signature.length !== expectedSig.length) return null;
+    const match = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig));
+    if (!match) return null;
+
+    const payload: TokenPayload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf-8'));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function sendSecureAuthCookie(res: Response, req: Request, token: string) {
+  const proto = req.headers['x-forwarded-proto'];
+  const isHttps = req.secure || proto === 'https' || (Array.isArray(proto) && proto[0] === 'https') || process.env.NODE_ENV === 'production';
+  const maxAge = 30 * 24 * 60 * 60; // 30 days in seconds
+  
+  // Set-Cookie: sp_session_token=...; Path=/; Max-Age=...; HttpOnly; SameSite=None; Secure; Partitioned
+  const sameSite = isHttps ? 'None' : 'Lax';
+  const secureFlag = isHttps ? '; Secure' : '';
+  const partitionedFlag = isHttps ? '; Partitioned' : '';
+
+  const cookieHeader = `sp_session_token=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=${sameSite}${secureFlag}${partitionedFlag}`;
+  res.setHeader('Set-Cookie', cookieHeader);
+}
+
+function clearSecureAuthCookie(res: Response, req: Request) {
+  const proto = req.headers['x-forwarded-proto'];
+  const isHttps = req.secure || proto === 'https' || (Array.isArray(proto) && proto[0] === 'https') || process.env.NODE_ENV === 'production';
+  const sameSite = isHttps ? 'None' : 'Lax';
+  const secureFlag = isHttps ? '; Secure' : '';
+  const partitionedFlag = isHttps ? '; Partitioned' : '';
+
+  const cookieHeader = `sp_session_token=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=${sameSite}${secureFlag}${partitionedFlag}`;
+  res.setHeader('Set-Cookie', cookieHeader);
+}
+
+function getAuthUser(req: Request): User | null {
+  let token = '';
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (req.headers['x-auth-token']) {
+    token = String(req.headers['x-auth-token']).trim();
+  } else if (req.cookies && req.cookies.sp_session_token) {
+    token = req.cookies.sp_session_token;
+  }
+
+  if (token) {
+    const verified = verifySessionToken(token);
+    if (verified) {
+      const user = db.users.find(u => u.id === verified.userId);
+      if (user && !user.isSuspended) {
+        return user;
+      }
+    }
+  }
+
+  // Fallback for user id header
+  const fallbackId = req.headers['x-user-id'] as string;
+  if (fallbackId) {
+    const user = db.users.find(u => u.id === fallbackId);
+    if (user && !user.isSuspended) {
+      return user;
+    }
+  }
+
+  return null;
+}
+
+// Authentication Routes
 app.post('/api/auth/register', (req: Request, res: Response) => {
   const { name, email, mobile, password, role } = req.body;
 
@@ -437,7 +544,7 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   const normalizedEmail = email.trim().toLowerCase();
   const existingUser = db.users.find(u => u.email.toLowerCase() === normalizedEmail);
   if (existingUser) {
-    return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
+    return res.status(400).json({ success: false, message: 'An account with this email already exists in Karachi registry.' });
   }
 
   const newUser: User = {
@@ -453,9 +560,13 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   db.users.push(newUser);
   saveDb(db);
 
+  const token = generateSessionToken(newUser);
+  sendSecureAuthCookie(res, req, token);
+
   res.status(201).json({
     success: true,
-    message: 'Account created successfully! Welcome to Service Provider Karachi.',
+    message: 'Account created successfully! Welcome to Service Provider – All Services Karachi.',
+    token,
     data: newUser
   });
 });
@@ -471,32 +582,290 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   const user = db.users.find(u => u.email.toLowerCase() === normalizedEmail);
 
   if (!user) {
-    return res.status(401).json({ success: false, message: 'Invalid credentials. User not found.' });
+    return res.status(401).json({ success: false, message: 'Invalid credentials. User not found in Karachi database.' });
   }
 
   if (user.isSuspended) {
     return res.status(403).json({ success: false, message: 'This account has been suspended by the administrator.' });
   }
 
+  const token = generateSessionToken(user);
+  sendSecureAuthCookie(res, req, token);
+
   res.json({
     success: true,
     message: `Welcome back, ${user.name}!`,
+    token,
     data: user
   });
 });
 
+// Demo switch login route that issues authentic signed token & cookie
+app.post('/api/auth/demo-login', (req: Request, res: Response) => {
+  const { role } = req.body;
+  let targetUser = db.users.find(u => u.role === (role === 'admin' ? 'admin' : role === 'provider' ? 'provider' : 'customer'));
+  if (!targetUser) {
+    targetUser = db.users[0];
+  }
+
+  const token = generateSessionToken(targetUser);
+  sendSecureAuthCookie(res, req, token);
+
+  res.json({
+    success: true,
+    message: `Switched to demo account: ${targetUser.name}`,
+    token,
+    data: targetUser
+  });
+});
+
+app.get('/api/auth/session', (req: Request, res: Response) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'No active session found or session has expired. Please authenticate.',
+      requiresReauth: true
+    });
+  }
+
+  const token = generateSessionToken(user);
+  sendSecureAuthCookie(res, req, token);
+
+  res.json({
+    success: true,
+    data: user,
+    token
+  });
+});
+
 app.get('/api/auth/me', (req: Request, res: Response) => {
-  const userId = req.headers['x-user-id'] as string;
-  if (!userId) {
+  const user = getAuthUser(req);
+  if (!user) {
     return res.status(401).json({ success: false, message: 'Not authenticated' });
   }
-
-  const user = db.users.find(u => u.id === userId);
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-
   res.json({ success: true, data: user });
+});
+
+app.post('/api/auth/logout', (req: Request, res: Response) => {
+  clearSecureAuthCookie(res, req);
+  res.json({ success: true, message: 'Successfully signed out.' });
+});
+
+// Standalone First-Party Authentication Window Route
+// Handles browser third-party cookie restrictions (Safari ITP / Chrome 3P cookie blocking)
+app.get('/auth/window', (req: Request, res: Response) => {
+  const isPopup = req.query.popup === '1' || req.query.popup === 'true';
+  const returnUrl = (req.query.return_url as string) || '/';
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Authenticate – Service Provider Karachi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #0f172a; color: #1e293b; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card { background: #ffffff; width: 100%; max-width: 420px; border-radius: 24px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .badge { display: inline-flex; align-items: center; background: #ecfdf5; color: #047857; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; }
+    h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.4; }
+    .security-notice { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px; font-size: 12px; color: #1e40af; margin-bottom: 16px; line-height: 1.4; }
+    .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+    .tab { flex: 1; padding: 8px 12px; border: none; background: transparent; font-weight: 700; font-size: 12px; color: #64748b; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .tab.active { background: #ffffff; color: #1e3a8a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 14px; text-align: left; }
+    label { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; }
+    input { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; outline: none; }
+    input:focus { border-color: #2563eb; ring: 2px solid #93c5fd; }
+    .btn-submit { width: 100%; background: #1d4ed8; color: #ffffff; border: none; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; margin-top: 6px; }
+    .btn-submit:hover { background: #1e40af; }
+    .btn-submit:disabled { opacity: 0.6; }
+    .demo-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+    .demo-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .demo-btn { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 6px; border-radius: 10px; cursor: pointer; text-align: center; }
+    .demo-btn:hover { background: #f1f5f9; }
+    .demo-role { font-size: 11px; font-weight: 700; color: #0f172a; }
+    .demo-name { font-size: 9px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .alert { padding: 10px 12px; border-radius: 10px; font-size: 12px; margin-bottom: 14px; text-align: left; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+    .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">🔒 First-Party Window Authentication</div>
+    <h1>Service Provider Karachi</h1>
+    <p class="subtitle">Karachi's Catalogue of Shops & Services</p>
+
+    <div class="security-notice">
+      This standalone window runs directly in first-party context to bypass cookie-blocking restrictions on Android Chrome and iOS Safari.
+    </div>
+
+    <div id="status-container"></div>
+
+    <div class="tabs">
+      <button type="button" class="tab active" id="tab-login" onclick="setMode('login')">Sign In</button>
+      <button type="button" class="tab" id="tab-register" onclick="setMode('register')">Create Account</button>
+    </div>
+
+    <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+      <div id="register-fields" style="display: none;">
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" placeholder="e.g. Shehbaz Abro">
+        </div>
+        <div class="form-group">
+          <label for="mobile">Karachi Mobile Number</label>
+          <input type="tel" id="mobile" placeholder="0333-1234567">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" required placeholder="name@example.com" value="shehbaz@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required placeholder="••••••••" value="password">
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-submit">Sign In Now</button>
+    </form>
+
+    <div class="demo-section">
+      <div class="demo-title">One-Click Fast Demo Login</div>
+      <div class="demo-grid">
+        <button type="button" class="demo-btn" onclick="quickDemo('customer')">
+          <div class="demo-role">Customer</div>
+          <div class="demo-name">Shehbaz Abro</div>
+        </button>
+        <button type="button" class="demo-btn" onclick="quickDemo('provider')">
+          <div class="demo-role">Provider</div>
+          <div class="demo-name">Tariq Mehmood</div>
+        </button>
+        <button type="button" class="demo-btn" onclick="quickDemo('admin')">
+          <div class="demo-role">Admin</div>
+          <div class="demo-name">Karachi HQ</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let mode = 'login';
+    const isPopup = ${JSON.stringify(isPopup)};
+    const returnUrl = ${JSON.stringify(returnUrl)};
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('tab-login').className = 'tab ' + (m === 'login' ? 'active' : '');
+      document.getElementById('tab-register').className = 'tab ' + (m === 'register' ? 'active' : '');
+      document.getElementById('register-fields').style.display = (m === 'register' ? 'block' : 'none');
+      document.getElementById('submit-btn').innerText = (m === 'login' ? 'Sign In Now' : 'Create Free Account');
+    }
+
+    function showStatus(msg, isSuccess = false) {
+      const container = document.getElementById('status-container');
+      container.innerHTML = '<div class="alert ' + (isSuccess ? 'alert-success' : 'alert-error') + '">' + msg + '</div>';
+    }
+
+    async function handleAuthSuccess(data) {
+      showStatus('✓ Authentication successful! Session restored.', true);
+      try {
+        localStorage.setItem('sp_karachi_token', data.token);
+        localStorage.setItem('sp_karachi_user', JSON.stringify(data.data));
+      } catch (e) {}
+
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({
+          type: 'SP_AUTH_SUCCESS',
+          token: data.token,
+          user: data.data
+        }, '*');
+        setTimeout(() => {
+          window.close();
+        }, 600);
+      } else {
+        setTimeout(() => {
+          window.location.href = returnUrl + (returnUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(data.token) + '&auth_status=success';
+        }, 700);
+      }
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerText = 'Authenticating...';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        if (mode === 'login') {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (data.success && data.token) {
+            await handleAuthSuccess(data);
+          } else {
+            showStatus(data.message || 'Login failed. Please check your credentials.');
+            btn.disabled = false;
+            btn.innerText = 'Sign In Now';
+          }
+        } else {
+          const name = document.getElementById('name').value.trim();
+          const mobile = document.getElementById('mobile').value.trim();
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, mobile, password, role: 'customer' })
+          });
+          const data = await res.json();
+          if (data.success && data.token) {
+            await handleAuthSuccess(data);
+          } else {
+            showStatus(data.message || 'Registration failed. Please try again.');
+            btn.disabled = false;
+            btn.innerText = 'Create Free Account';
+          }
+        }
+      } catch (err) {
+        showStatus('Network connection error: ' + err.message);
+        btn.disabled = false;
+        btn.innerText = (mode === 'login' ? 'Sign In Now' : 'Create Free Account');
+      }
+    }
+
+    async function quickDemo(role) {
+      showStatus('Logging in as ' + role + '...', true);
+      try {
+        const res = await fetch('/api/auth/demo-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role })
+        });
+        const data = await res.json();
+        if (data.success && data.token) {
+          await handleAuthSuccess(data);
+        } else {
+          showStatus(data.message || 'Demo login failed');
+        }
+      } catch (err) {
+        showStatus('Demo login error: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>`);
 });
 
 // Toggle Favorite Business

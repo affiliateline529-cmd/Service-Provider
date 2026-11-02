@@ -19,7 +19,7 @@ android_manifest = """<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
-        android:label="Service Provider"
+        android:label="Service Provider – All Services Karachi"
         android:icon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:allowBackup="true"
@@ -42,7 +42,7 @@ meta_inf = """Manifest-Version: 1.0
 Created-By: 1.8.0_312 (Android Open Source Project)
 Built-By: Karachi Service Provider Studio
 Package-Name: pk.serviceprovider.karachi
-Application-Name: Service Provider – All Services
+Application-Name: Service Provider – All Services Karachi
 Target-City: Karachi, Pakistan
 Target-SdkVersion: 34
 Min-SdkVersion: 26
@@ -50,7 +50,7 @@ Release-Type: Production-Release
 """
 
 app_info = json.dumps({
-    "appName": "Service Provider – All Services",
+    "appName": "Service Provider – All Services Karachi",
     "package": "pk.serviceprovider.karachi",
     "version": "1.0.0",
     "build": 100,
