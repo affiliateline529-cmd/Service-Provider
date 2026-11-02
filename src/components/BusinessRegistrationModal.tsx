@@ -41,6 +41,13 @@ export const BusinessRegistrationModal: React.FC<BusinessRegistrationModalProps>
   const [openingHours, setOpeningHours] = useState('09:00 AM - 09:00 PM (Mon-Sat)');
   const [servicesInput, setServicesInput] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [referralCode, setReferralCode] = useState(() => {
+    try {
+      return localStorage.getItem('karachi_affiliate_ref') || '';
+    } catch {
+      return '';
+    }
+  });
   const [photoUrl, setPhotoUrl] = useState(PRESET_STORE_PHOTOS[0]);
   const [logoUrl, setLogoUrl] = useState('https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=200&q=80');
 
@@ -91,6 +98,24 @@ export const BusinessRegistrationModal: React.FC<BusinessRegistrationModalProps>
       if (data.success && data.data) {
         setSuccessData(data.data);
         onRegistered(data.data);
+
+        // Credit affiliate referral if referral code was provided
+        if (referralCode.trim()) {
+          try {
+            fetch('/api/affiliate/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                referralCode: referralCode.trim(),
+                businessName: businessName.trim(),
+                category,
+                karachiArea
+              })
+            }).catch(() => {});
+          } catch {
+            // Ignore
+          }
+        }
       } else {
         setError(data.message || 'Registration failed');
       }
@@ -399,6 +424,31 @@ export const BusinessRegistrationModal: React.FC<BusinessRegistrationModalProps>
               />
               <p className="text-[10px] text-slate-400 mt-1">
                 Enter multiple services separated by commas. These will be searchable by customers.
+              </p>
+            </div>
+
+            {/* Affiliate / Referral Code (Optional) */}
+            <div className="bg-amber-50/60 p-3 rounded-2xl border border-amber-200/80">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-amber-900 flex items-center space-x-1">
+                  <span>Affiliate / Partner Referral Code</span>
+                  <span className="text-[10px] font-normal text-amber-700">(Optional)</span>
+                </label>
+                {referralCode && (
+                  <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                    Partner Applied
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={referralCode}
+                onChange={e => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="e.g. KHI-REF-7860"
+                className="w-full text-xs px-3 py-2 rounded-xl border border-amber-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-mono uppercase"
+              />
+              <p className="text-[10px] text-amber-700 mt-1">
+                If a Karachi partner or friend recommended you, enter their code so they receive their referral credit.
               </p>
             </div>
 

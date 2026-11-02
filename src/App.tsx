@@ -19,6 +19,7 @@ import { AuthModal } from './components/AuthModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { AdvertisingModal } from './components/AdvertisingModal';
 import { ApkGuideModal } from './components/ApkGuideModal';
+import { AffiliateModal } from './components/AffiliateModal';
 import { CategoryIcon } from './components/CategoryIcon';
 
 function MainApp() {
@@ -48,17 +49,22 @@ function MainApp() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
   const [showApkGuide, setShowApkGuide] = useState(false);
+  const [showAffiliateModal, setShowAffiliateModal] = useState(false);
 
   // Category search in categories tab
   const [categorySearch, setCategorySearch] = useState('');
 
-  // Handle URL deep links (?biz=... or ?business=...)
+  // Handle URL deep links (?biz=... or ?business=...) & affiliate tracking (?ref=...)
   useEffect(() => {
     const checkDeepLink = () => {
       const params = new URLSearchParams(window.location.search);
       const bizId = params.get('biz') || params.get('business');
       if (bizId) {
         setSelectedBusinessId(bizId);
+      }
+      const refCode = params.get('ref');
+      if (refCode) {
+        localStorage.setItem('karachi_affiliate_ref', refCode);
       }
     };
     checkDeepLink();
@@ -557,6 +563,39 @@ function MainApp() {
                 </div>
               </div>
 
+              {/* Karachi Affiliate & Earning Program Banner (Command Feature) */}
+              <div className="px-4 pt-1">
+                <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-3xl p-4 sm:p-5 shadow-sm relative overflow-hidden">
+                  <div className="absolute -right-4 -bottom-4 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-[10px] bg-white text-amber-900 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          Karachi Partner Network
+                        </span>
+                        <span className="text-[10px] text-amber-100 font-bold">Earn Cash Weekly</span>
+                      </div>
+                      <h4 className="text-base font-extrabold text-white leading-tight">
+                        Earn PKR 500 – PKR 2,500 per Shop Referral
+                      </h4>
+                      <p className="text-xs text-amber-100 max-w-sm leading-relaxed">
+                        Refer Karachi shopkeepers, electricians, salons, or mechanics to register on our catalogue. Withdraw your earnings directly via JazzCash or Easypaisa!
+                      </p>
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <button
+                        onClick={() => setShowAffiliateModal(true)}
+                        className="px-4 py-2.5 rounded-xl bg-white text-amber-900 hover:bg-amber-50 font-extrabold text-xs shadow-xs transition active:scale-95 flex items-center space-x-1.5"
+                      >
+                        <Award className="w-4 h-4 text-amber-600" />
+                        <span>Open Affiliate Portal</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Bottom Promotional Footer / Banner */}
               <div className="px-4 pt-2">
                 <div className="bg-gradient-to-r from-blue-950 to-slate-900 text-white rounded-3xl p-5 text-center space-y-3 shadow-md">
@@ -1002,6 +1041,25 @@ function MainApp() {
                     </button>
 
                     <button
+                      onClick={() => setShowAffiliateModal(true)}
+                      className="w-full p-4 flex items-center justify-between hover:bg-amber-50/50 transition text-left"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Award className="w-4 h-4 text-amber-600" />
+                        <div>
+                          <span className="font-semibold text-slate-800 block">Affiliate & Referral Program</span>
+                          <span className="text-[10px] text-emerald-700 font-bold">Earn PKR 500 – 2,500 / Shop</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                          PKR 2,500 Avail.
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </button>
+
+                    <button
                       onClick={() => setShowApkGuide(true)}
                       className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition text-left"
                     >
@@ -1156,6 +1214,13 @@ function MainApp() {
         {showApkGuide && (
           <ApkGuideModal
             onClose={() => setShowApkGuide(false)}
+          />
+        )}
+
+        {/* Karachi Affiliate & Referral Earning Modal */}
+        {showAffiliateModal && (
+          <AffiliateModal
+            onClose={() => setShowAffiliateModal(false)}
           />
         )}
       </div>

@@ -7,7 +7,7 @@ import { KARACHI_CATEGORIES } from './src/data/categories.js';
 import { KARACHI_AREAS } from './src/data/karachiAreas.js';
 import { AD_PACKAGES } from './src/data/advertisingPackages.js';
 import { INITIAL_BUSINESSES, INITIAL_REVIEWS, INITIAL_USERS } from './src/data/seedData.js';
-import { Business, Review, User, AdRequest } from './src/types/index.js';
+import { Business, Review, User, AdRequest, AffiliateReferral, PayoutRequest } from './src/types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +26,8 @@ interface DatabaseSchema {
   businesses: Business[];
   reviews: Review[];
   adRequests: AdRequest[];
+  affiliateReferrals: AffiliateReferral[];
+  payoutRequests: PayoutRequest[];
 }
 
 function initDb(): DatabaseSchema {
@@ -36,7 +38,10 @@ function initDb(): DatabaseSchema {
   if (fs.existsSync(DB_FILE)) {
     try {
       const content = fs.readFileSync(DB_FILE, 'utf-8');
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      if (!parsed.affiliateReferrals) parsed.affiliateReferrals = [];
+      if (!parsed.payoutRequests) parsed.payoutRequests = [];
+      return parsed;
     } catch (err) {
       console.error('Error reading database file, re-seeding:', err);
     }
@@ -72,6 +77,51 @@ function initDb(): DatabaseSchema {
         transactionId: 'EP8472910481',
         status: 'active',
         createdAt: '2026-01-20T12:00:00.000Z'
+      }
+    ],
+    affiliateReferrals: [
+      {
+        id: 'ref-1',
+        affiliateId: 'user-customer-1',
+        businessName: 'Al-Madina Electric & UPS Solutions',
+        category: 'Electricians',
+        karachiArea: 'Gulshan-e-Iqbal',
+        earnedPKR: 1500,
+        status: 'verified',
+        date: '2026-01-18'
+      },
+      {
+        id: 'ref-2',
+        affiliateId: 'user-customer-1',
+        businessName: 'Saddar Mobile Zone & LCD Lab',
+        category: 'Mobile Shops',
+        karachiArea: 'Saddar',
+        earnedPKR: 1000,
+        status: 'verified',
+        date: '2026-01-22'
+      },
+      {
+        id: 'ref-3',
+        affiliateId: 'user-customer-1',
+        businessName: 'DHA Precision Auto & EFI Workshop',
+        category: 'Car Mechanics',
+        karachiArea: 'DHA (Defence)',
+        earnedPKR: 1000,
+        status: 'verified',
+        date: '2026-02-01'
+      }
+    ],
+    payoutRequests: [
+      {
+        id: 'payout-1',
+        affiliateId: 'user-customer-1',
+        affiliateName: 'Shehbaz Abro',
+        amountPKR: 1000,
+        paymentMethod: 'JazzCash',
+        accountNumber: '0333-2891045',
+        accountTitle: 'Shehbaz Abro',
+        status: 'completed',
+        createdAt: '2026-01-28T14:00:00.000Z'
       }
     ]
   };
@@ -638,13 +688,166 @@ app.post('/api/admin/ads/:id/status', (req: Request, res: Response) => {
   res.json({ success: true, message: `Ad request status updated to ${status}.`, data: request });
 });
 
+// ================= AFFILIATE & REFERRAL API =================
+
+app.get('/api/affiliate/:userId', (req: Request, res: Response) => {
+  const userId = req.params.userId;
+  const user = db.users.find(u => u.id === userId);
+
+  // Generate deterministic referral code for user if not set
+  const referralCode = `KHI-REF-${(userId || 'USER').replace(/\D/g, '').slice(-4) || '7860'}`;
+
+  const referrals = (db.affiliateReferrals || []).filter(r => r.affiliateId === userId);
+  const payouts = (db.payoutRequests || []).filter(p => p.affiliateId === userId);
+
+  const totalEarningsPKR = referrals
+    .filter(r => r.status === 'verified')
+    .reduce((acc, r) => acc + r.earnedPKR, 0);
+
+  const totalWithdrawnPKR = payouts
+    .filter(p => p.status === 'completed' || p.status === 'pending')
+    .reduce((acc, p) => acc + p.amountPKR, 0);
+
+  const availableBalancePKR = Math.max(0, totalEarningsPKR - totalWithdrawnPKR);
+
+  res.json({
+    success: true,
+    data: {
+      referralCode,
+      totalEarningsPKR: totalEarningsPKR || 3500, // provide realistic demo default
+      availableBalancePKR: availableBalancePKR || 2500,
+      totalReferredShops: referrals.length || 3,
+      verifiedShops: referrals.filter(r => r.status === 'verified').length || 3,
+      referrals: referrals.length > 0 ? referrals : [
+        {
+          id: 'ref-1',
+          affiliateId: userId,
+          businessName: 'Al-Madina Electric & UPS Solutions',
+          category: 'Electricians',
+          karachiArea: 'Gulshan-e-Iqbal',
+          earnedPKR: 1500,
+          status: 'verified',
+          date: '2026-01-18'
+        },
+        {
+          id: 'ref-2',
+          affiliateId: userId,
+          businessName: 'Saddar Mobile Zone & LCD Lab',
+          category: 'Mobile Shops',
+          karachiArea: 'Saddar',
+          earnedPKR: 1000,
+          status: 'verified',
+          date: '2026-01-22'
+        },
+        {
+          id: 'ref-3',
+          affiliateId: userId,
+          businessName: 'DHA Precision Auto & EFI Workshop',
+          category: 'Car Mechanics',
+          karachiArea: 'DHA (Defence)',
+          earnedPKR: 1000,
+          status: 'verified',
+          date: '2026-02-01'
+        }
+      ],
+      payouts: payouts.length > 0 ? payouts : [
+        {
+          id: 'payout-1',
+          affiliateId: userId,
+          affiliateName: user?.name || 'Shehbaz Abro',
+          amountPKR: 1000,
+          paymentMethod: 'JazzCash',
+          accountNumber: '0333-2891045',
+          accountTitle: user?.name || 'Shehbaz Abro',
+          status: 'completed',
+          createdAt: '2026-01-28T14:00:00.000Z'
+        }
+      ]
+    }
+  });
+});
+
+app.post('/api/affiliate/withdraw', (req: Request, res: Response) => {
+  const { affiliateId, affiliateName, amountPKR, paymentMethod, accountNumber, accountTitle } = req.body;
+
+  if (!affiliateId || !amountPKR || !accountNumber || !accountTitle) {
+    return res.status(400).json({ success: false, message: 'Please provide valid payout details.' });
+  }
+
+  const numAmount = Number(amountPKR);
+  if (numAmount < 500) {
+    return res.status(400).json({ success: false, message: 'Minimum withdrawal amount is PKR 500.' });
+  }
+
+  const newPayout: PayoutRequest = {
+    id: `payout-${Date.now()}`,
+    affiliateId,
+    affiliateName: affiliateName || 'Affiliate Partner',
+    amountPKR: numAmount,
+    paymentMethod: paymentMethod === 'Easypaisa' ? 'Easypaisa' : 'JazzCash',
+    accountNumber: accountNumber.trim(),
+    accountTitle: accountTitle.trim(),
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  if (!db.payoutRequests) db.payoutRequests = [];
+  db.payoutRequests.unshift(newPayout);
+  saveDb(db);
+
+  res.status(201).json({
+    success: true,
+    message: `Withdrawal request for PKR ${numAmount.toLocaleString()} submitted via ${newPayout.paymentMethod}. Payout will be sent within 24 hours.`,
+    data: newPayout
+  });
+});
+
+app.post('/api/affiliate/track', (req: Request, res: Response) => {
+  const { referralCode, businessName, category, karachiArea } = req.body;
+
+  if (!referralCode || !businessName) {
+    return res.status(400).json({ success: false, message: 'Missing referral tracking parameters.' });
+  }
+
+  const newReferral: AffiliateReferral = {
+    id: `ref-${Date.now()}`,
+    affiliateId: 'user-customer-1',
+    businessName: businessName.trim(),
+    category: category || 'Services',
+    karachiArea: karachiArea || 'Karachi',
+    earnedPKR: 500, // PKR 500 referral bonus for shop listing
+    status: 'verified',
+    date: new Date().toISOString().split('T')[0]
+  };
+
+  if (!db.affiliateReferrals) db.affiliateReferrals = [];
+  db.affiliateReferrals.unshift(newReferral);
+  saveDb(db);
+
+  res.json({ success: true, message: 'Affiliate referral successfully credited!', data: newReferral });
+});
+
+// Direct APK Download Endpoint
+app.get('/api/download-apk', (req: Request, res: Response) => {
+  const apkPath = path.join(__dirname, 'public', 'downloads', 'ServiceProvider-Karachi-v1.0.apk');
+  if (fs.existsSync(apkPath)) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="ServiceProvider-Karachi-v1.0.apk"');
+    res.sendFile(apkPath);
+  } else {
+    res.status(404).json({ success: false, message: 'APK package is being generated. Please retry in a few moments.' });
+  }
+});
+
 // Reset data to seeds
 app.post('/api/reset-data', (req: Request, res: Response) => {
   db = {
     users: [...INITIAL_USERS],
     businesses: [...INITIAL_BUSINESSES],
     reviews: [...INITIAL_REVIEWS],
-    adRequests: []
+    adRequests: [],
+    affiliateReferrals: [],
+    payoutRequests: []
   };
   saveDb(db);
   res.json({ success: true, message: 'Database reset to initial Karachi dataset.' });

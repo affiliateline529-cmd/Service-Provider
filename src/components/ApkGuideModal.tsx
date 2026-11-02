@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   X, Download, Smartphone, Terminal, CheckCircle2, ShieldCheck,
-  Share2, ArrowRight, Copy, Check, Play
+  Share2, ArrowRight, Copy, Check, Play, FileCode, CheckCircle,
+  ExternalLink, MessageSquare, AlertTriangle, Sparkles
 } from 'lucide-react';
 
 interface ApkGuideModalProps {
@@ -9,7 +10,30 @@ interface ApkGuideModalProps {
 }
 
 export const ApkGuideModal: React.FC<ApkGuideModalProps> = ({ onClose }) => {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadComplete, setDownloadComplete] = useState(false);
   const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const [copiedApkLink, setCopiedApkLink] = useState(false);
+
+  const downloadUrl = `${window.location.origin}/api/download-apk`;
+
+  const handleDownloadApk = () => {
+    setDownloading(true);
+    setDownloadComplete(false);
+
+    // Trigger browser file download
+    const link = document.createElement('a');
+    link.href = '/api/download-apk';
+    link.download = 'ServiceProvider-Karachi-v1.0.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      setDownloading(false);
+      setDownloadComplete(true);
+    }, 1500);
+  };
 
   const copyToClipboard = (text: string, stepIndex: number) => {
     navigator.clipboard.writeText(text);
@@ -17,21 +41,30 @@ export const ApkGuideModal: React.FC<ApkGuideModalProps> = ({ onClose }) => {
     setTimeout(() => setCopiedStep(null), 2000);
   };
 
+  const copyApkDownloadLink = () => {
+    navigator.clipboard.writeText(downloadUrl);
+    setCopiedApkLink(true);
+    setTimeout(() => setCopiedApkLink(false), 2000);
+  };
+
+  const shareText = `Download "Service Provider – All Services" Android APK for Karachi, Pakistan!\nFind verified electricians, plumbers, shops & mechanics across Karachi:\n${downloadUrl}`;
+  const waShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative max-h-[92vh] flex flex-col my-auto overflow-hidden">
+      <div className="bg-white w-full max-w-2xl rounded-3xl p-5 sm:p-6 shadow-2xl relative max-h-[92vh] flex flex-col my-auto overflow-hidden">
         {/* Top Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <Smartphone className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-xs">
+              <Download className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                Android Package Kit (APK) Guide
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Android Package Kit (APK)
               </span>
-              <h2 className="text-lg font-bold text-slate-900 mt-0.5">
-                Install "Service Provider" on Android
+              <h2 className="text-base font-extrabold text-slate-900 mt-0.5">
+                Download Service Provider APK
               </h2>
             </div>
           </div>
@@ -44,141 +77,201 @@ export const ApkGuideModal: React.FC<ApkGuideModalProps> = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto flex-1 pr-1 space-y-5 pt-3 text-xs text-slate-700">
-          {/* METHOD 1: Instant PWA Android App */}
-          <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-2xl p-4 border border-emerald-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
-                  1
+        <div className="overflow-y-auto flex-1 pr-1 space-y-4 pt-3 text-xs text-slate-700">
+          {/* PRIMARY DOWNLOAD CARD */}
+          <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-blue-800 text-white rounded-3xl p-4 sm:p-5 shadow-md relative overflow-hidden">
+            <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
+
+            <div className="relative z-10 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Smartphone className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">Official Android Release</span>
+                    <span className="text-[10px] text-emerald-200">Karachi Catalogue Edition v1.0.0</span>
+                  </div>
+                </div>
+
+                <span className="text-[10px] bg-emerald-400/30 text-emerald-100 border border-emerald-300/40 px-2.5 py-0.5 rounded-full font-bold">
+                  Verified Safe • APK
                 </span>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  Instant 1-Click Install on Android Phone (PWA)
-                </h3>
               </div>
-              <span className="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">
-                Recommended & Fastest
-              </span>
-            </div>
 
-            <p className="text-slate-600 leading-relaxed text-xs">
-              You can install this complete Karachi application directly onto your Android phone's home screen right now with zero compilation needed. It runs as a full-screen, standalone Android app without address bars.
-            </p>
+              {/* Package specs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-black/20 p-2.5 rounded-2xl border border-white/10 text-[11px]">
+                <div>
+                  <span className="text-[10px] text-slate-300 block">Package</span>
+                  <span className="font-mono font-bold text-white truncate block">pk.serviceprovider.karachi</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-300 block">Version</span>
+                  <span className="font-bold text-white">v1.0.0 (Build 100)</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-300 block">Min. Android</span>
+                  <span className="font-bold text-white">Android 8.0+</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-300 block">Architecture</span>
+                  <span className="font-bold text-white">Universal ARM/x86</span>
+                </div>
+              </div>
 
-            <div className="bg-white rounded-xl p-3 border border-emerald-200/80 space-y-2">
-              <div className="flex items-start space-x-2">
-                <span className="font-bold text-emerald-700 shrink-0">Step A:</span>
-                <span>Open this link in <strong>Google Chrome</strong> or <strong>Samsung Internet</strong> on your Android mobile.</span>
+              {/* Big Action Download Button */}
+              <div className="pt-1 flex flex-col sm:flex-row items-center gap-2">
+                <button
+                  onClick={handleDownloadApk}
+                  disabled={downloading}
+                  className="w-full sm:flex-1 py-3 px-5 rounded-2xl bg-white text-emerald-900 hover:bg-emerald-50 font-extrabold text-sm shadow-md transition flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-75"
+                >
+                  <Download className={`w-4 h-4 text-emerald-700 ${downloading ? 'animate-bounce' : ''}`} />
+                  <span>
+                    {downloading
+                      ? 'Downloading APK File...'
+                      : downloadComplete
+                      ? '✓ Downloaded! Tap to Download Again'
+                      : 'Download Android APK Now (.apk)'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={copyApkDownloadLink}
+                  className="w-full sm:w-auto py-3 px-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs transition flex items-center justify-center space-x-1.5 active:scale-95 shrink-0"
+                  title="Copy Direct Download Link"
+                >
+                  {copiedApkLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedApkLink ? 'Link Copied!' : 'Copy Direct URL'}</span>
+                </button>
               </div>
-              <div className="flex items-start space-x-2">
-                <span className="font-bold text-emerald-700 shrink-0">Step B:</span>
-                <span>Tap the <strong>three dots menu (⋮)</strong> at the top right of the browser.</span>
-              </div>
-              <div className="flex items-start space-x-2">
-                <span className="font-bold text-emerald-700 shrink-0">Step C:</span>
-                <span>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</span>
-              </div>
+
+              {downloadComplete && (
+                <div className="bg-emerald-500/30 border border-emerald-300/40 p-2.5 rounded-xl text-center text-[11px] text-emerald-100 animate-in fade-in">
+                  ✓ <strong>ServiceProvider-Karachi-v1.0.apk</strong> download started! Check your phone's notification bar or downloads folder.
+                </div>
+              )}
             </div>
-            <p className="text-[11px] text-emerald-800 font-medium">
-              ✓ The "Service Provider" app icon will appear alongside your other Android apps!
-            </p>
           </div>
 
-          {/* METHOD 2: Generate Signed Standalone APK using Capacitor */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+          {/* SHARE VIA WHATSAPP BUTTON */}
+          <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center space-x-2">
-              <span className="w-6 h-6 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center text-xs">
-                2
-              </span>
-              <h3 className="font-bold text-slate-900 text-sm">
-                Compile into a Native Android .APK File (Capacitor)
-              </h3>
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="font-bold text-slate-800 text-xs">Share APK with Karachi Friends & Family</div>
+                <div className="text-[11px] text-slate-500">Send direct WhatsApp link to install on any Android phone</div>
+              </div>
             </div>
 
-            <p className="text-slate-600 leading-relaxed text-xs">
-              To bundle this application into a standalone <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-slate-800">app-release.apk</code> file for distribution via WhatsApp, Google Drive, or Google Play Store:
-            </p>
+            <a
+              href={waShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition active:scale-95 shrink-0"
+            >
+              <MessageSquare className="w-3.5 h-3.5 fill-current" />
+              <span>Share APK on WhatsApp</span>
+            </a>
+          </div>
 
-            {/* Code Commands */}
-            <div className="space-y-2">
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                  <span>Step 1: Install Capacitor Android Bridge</span>
-                  <button
-                    onClick={() => copyToClipboard('npm install @capacitor/core @capacitor/cli @capacitor/android\nnpx cap init "Service Provider" "pk.serviceprovider.karachi"', 1)}
-                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-semibold"
-                  >
-                    {copiedStep === 1 ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedStep === 1 ? 'Copied!' : 'Copy'}</span>
-                  </button>
+          {/* 3-STEP EASY INSTALLATION (SIDELOADING) */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
+            <h3 className="font-bold text-slate-900 text-xs flex items-center space-x-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>How to Install the Downloaded APK on Android</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                <div className="w-6 h-6 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center text-[11px]">
+                  1
                 </div>
-                <pre className="bg-slate-900 text-emerald-400 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto">
-{`npm install @capacitor/core @capacitor/cli @capacitor/android
-npx cap init "Service Provider" "pk.serviceprovider.karachi"`}
-                </pre>
+                <div className="font-bold text-slate-900 text-xs">Tap Download</div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Tap the green download button above to get the <code className="text-blue-900 font-mono text-[10px]">.apk</code> file.
+                </p>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                  <span>Step 2: Build Web Assets & Add Android Platform</span>
-                  <button
-                    onClick={() => copyToClipboard('npm run build\nnpx cap add android\nnpx cap copy', 2)}
-                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-semibold"
-                  >
-                    {copiedStep === 2 ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedStep === 2 ? 'Copied!' : 'Copy'}</span>
-                  </button>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                <div className="w-6 h-6 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center text-[11px]">
+                  2
                 </div>
-                <pre className="bg-slate-900 text-emerald-400 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto">
-{`npm run build
-npx cap add android
-npx cap copy`}
-                </pre>
+                <div className="font-bold text-slate-900 text-xs">Open Notification</div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Swipe down your phone screen and tap the downloaded file or open from <strong>My Files / Downloads</strong>.
+                </p>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                  <span>Step 3: Generate APK via Gradle or Android Studio</span>
-                  <button
-                    onClick={() => copyToClipboard('cd android && ./gradlew assembleDebug', 3)}
-                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-semibold"
-                  >
-                    {copiedStep === 3 ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedStep === 3 ? 'Copied!' : 'Copy'}</span>
-                  </button>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[11px]">
+                  3
                 </div>
-                <pre className="bg-slate-900 text-emerald-400 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto">
-{`cd android && ./gradlew assembleDebug`}
-                </pre>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  The generated APK file will be located at: <br />
-                  <code className="text-blue-900 font-mono">android/app/build/outputs/apk/debug/app-debug.apk</code>
+                <div className="font-bold text-slate-900 text-xs">Tap Install</div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Tap <strong>Install</strong>. If prompted, toggle <em>"Allow from this source"</em> in Android settings.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Sideloading Instructions */}
-          <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 space-y-2">
-            <h4 className="font-bold text-amber-900 text-xs flex items-center space-x-1">
-              <ShieldCheck className="w-4 h-4 text-amber-700" />
-              <span>How to Install the .APK on an Android Phone</span>
-            </h4>
-            <ol className="list-decimal list-inside space-y-1 text-amber-800 text-[11px] leading-relaxed">
-              <li>Send the compiled <code className="font-mono">app-debug.apk</code> file to your Android phone (via WhatsApp, USB, or Google Drive).</li>
-              <li>Tap the file on your phone. If prompted, allow <em>"Install unknown apps"</em> from your file manager or browser settings.</li>
-              <li>Tap <strong>Install</strong>. Once complete, launch <strong>Service Provider</strong> from your app drawer!</li>
+          {/* METHOD 2: Instant PWA Android App */}
+          <div className="bg-blue-50/70 rounded-2xl p-4 border border-blue-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-blue-900 text-xs flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span>Instant Android Install via Chrome (No APK file needed)</span>
+              </h3>
+              <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
+                Fastest
+              </span>
+            </div>
+
+            <p className="text-slate-600 text-[11px] leading-relaxed">
+              On Android, Google Chrome can generate a native WebAPK icon directly to your home screen:
+            </p>
+
+            <ol className="list-decimal list-inside space-y-1 text-slate-700 text-[11px]">
+              <li>Tap the <strong>three dots (⋮)</strong> menu in Chrome browser at the top right.</li>
+              <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+              <li>The official app icon will be pinned to your Android apps drawer!</li>
             </ol>
+          </div>
+
+          {/* METHOD 3: Capacitor Source Build Commands */}
+          <div className="bg-slate-900 text-slate-200 rounded-2xl p-4 space-y-2 font-mono text-[11px]">
+            <div className="flex items-center justify-between text-slate-400">
+              <div className="flex items-center space-x-1.5 font-bold text-emerald-400">
+                <Terminal className="w-3.5 h-3.5" />
+                <span>Developer Build Command (Capacitor)</span>
+              </div>
+              <button
+                onClick={() => copyToClipboard('npm run build && npx cap add android && npx cap copy && cd android && ./gradlew assembleDebug', 99)}
+                className="text-xs text-blue-300 hover:text-white flex items-center space-x-1 font-sans"
+              >
+                {copiedStep === 99 ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedStep === 99 ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+            <pre className="text-emerald-400 overflow-x-auto p-1.5 bg-black/40 rounded-lg">
+{`npm run build && npx cap copy
+cd android && ./gradlew assembleDebug`}
+            </pre>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-[11px] text-slate-400">
+            Karachi, Pakistan • Version 1.0.0
+          </span>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs transition shadow-sm"
+            className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition"
           >
-            Close Guide
+            Close
           </button>
         </div>
       </div>

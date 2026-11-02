@@ -85,3 +85,37 @@ export interface AdRequest {
   status: 'pending' | 'active' | 'rejected';
   createdAt: string;
 }
+
+export interface AffiliateReferral {
+  id: string;
+  affiliateId: string;
+  businessName: string;
+  category: string;
+  karachiArea: string;
+  earnedPKR: number;
+  status: 'verified' | 'pending' | 'rejected';
+  date: string;
+}
+
+export interface PayoutRequest {
+  id: string;
+  affiliateId: string;
+  affiliateName: string;
+  amountPKR: number;
+  paymentMethod: 'JazzCash' | 'Easypaisa';
+  accountNumber: string;
+  accountTitle: string;
+  status: 'pending' | 'completed' | 'rejected';
+  createdAt: string;
+}
+
+export interface AffiliateData {
+  referralCode: string;
+  totalEarningsPKR: number;
+  availableBalancePKR: number;
+  totalReferredShops: number;
+  verifiedShops: number;
+  referrals: AffiliateReferral[];
+  payouts: PayoutRequest[];
+}
+
