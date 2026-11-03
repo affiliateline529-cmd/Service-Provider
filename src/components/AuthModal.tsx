@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import {
   X, User, Mail, Phone, Lock, CheckCircle2, AlertCircle,
-  Shield, LogIn, UserPlus, Sparkles, ExternalLink, KeyRound
+  Shield, LogIn, UserPlus, Sparkles, ExternalLink, KeyRound,
+  ArrowRight, Chrome, Facebook
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface AuthModalProps {
   onClose: () => void;
   initialTab?: 'login' | 'register';
+  isForced?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
-  initialTab = 'login'
+  initialTab = 'login',
+  isForced = false
 }) => {
   const { login, register, switchDemoUser, openNewWindowAuth, isCookieBlocked, authError, setAuthError } = useAuth();
   const [tab, setTab] = useState<'login' | 'register'>(initialTab);
@@ -61,245 +64,215 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     setLocalError(null);
     await switchDemoUser(demoRole);
-    setSuccessMsg(`Switched to ${demoRole === 'admin' ? 'Administrator' : demoRole === 'provider' ? 'Business Provider' : 'Customer'} account!`);
+    setSuccessMsg(`Accessing ${demoRole.toUpperCase()} Dashboard...`);
     setLoading(false);
-    setTimeout(() => onClose(), 600);
+    setTimeout(() => onClose(), 800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 bg-[#101C2C] sm:bg-black/80 flex items-center justify-center animate-fade-in overflow-y-auto">
+      <div className="w-full max-w-md min-h-screen sm:min-h-0 bg-[#101C2C] sm:rounded-[40px] border-x sm:border border-white/5 relative flex flex-col shadow-2xl overflow-hidden my-auto">
+        
+        {/* Background Accent */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/5 blur-[100px] -mr-32 -mt-32 rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#087F5B]/5 blur-[100px] -ml-32 -mb-32 rounded-full pointer-events-none" />
 
-        {/* Brand Header */}
-        <div className="text-center mb-4">
-          <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
-            <Shield className="w-6 h-6 text-blue-800" />
+        {!isForced && (
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 transition z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 p-8 sm:p-10 space-y-8 relative">
+          
+          {/* Header */}
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#f1d37a] p-[2px] mx-auto shadow-xl">
+              <div className="w-full h-full bg-[#101C2C] rounded-[14px] flex items-center justify-center">
+                <Shield className="w-8 h-8 text-[#D4AF37]" strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-black text-white uppercase tracking-tight italic">
+                Service <span className="text-[#D4AF37]">Provider</span>
+              </h1>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
+                {tab === 'login' ? 'Luxury Marketplace Access' : 'Exclusive Partner Membership'}
+              </p>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
-            Service Provider – All Services Karachi
-          </h2>
-          <p className="text-xs text-slate-500">
-            {tab === 'login' ? 'Log in to rate services & save favorite businesses' : 'Create your free customer account'}
-          </p>
-        </div>
 
-        {/* First-Party Window Authentication notice / banner */}
-        <div className="mb-4 p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
-          <div className="flex items-start space-x-2.5">
-            <KeyRound className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
-            <div className="flex-1 text-xs">
-              <p className="font-semibold text-blue-950">
-                Action required to load your app?
-              </p>
-              <p className="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
-                If your browser is blocking a required security cookie (common on older versions of iOS and Safari or Android Chrome), authenticate in a new first-party window.
-              </p>
+          {/* Social Buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button className="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold transition active:scale-95 group">
+              <Chrome className="w-4 h-4 text-white/70 group-hover:text-white transition" />
+              <span>Google</span>
+            </button>
+            <button className="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold transition active:scale-95 group">
+              <Facebook className="w-4 h-4 text-[#1877F2] group-hover:text-[#1877F2] transition" />
+              <span>Facebook</span>
+            </button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
+              <span className="bg-[#101C2C] px-4 text-slate-500 italic">OR USE EMAIL</span>
+            </div>
+          </div>
+
+          {displayError && (
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-start space-x-3">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <p className="font-medium leading-relaxed">{displayError}</p>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center space-x-3">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <p className="font-medium">{successMsg}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {tab === 'register' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-500 absolute left-4 top-4" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Full Name"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-sm focus:outline-hidden focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/50 transition placeholder:text-slate-600"
+                  />
+                </div>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-500 absolute left-4 top-4" />
+                  <input
+                    type="tel"
+                    value={mobile}
+                    onChange={e => setMobile(e.target.value)}
+                    placeholder="Mobile Number (e.g. 0300-1234567)"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-sm focus:outline-hidden focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/50 transition placeholder:text-slate-600"
+                  />
+                </div>
+                
+                {/* Role Switcher */}
+                <div className="grid grid-cols-2 p-1 bg-white/5 rounded-2xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setRole('customer')}
+                    className={`py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition ${
+                      role === 'customer' ? 'bg-[#D4AF37] text-[#101C2C] shadow-lg' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('provider')}
+                    className={`py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition ${
+                      role === 'provider' ? 'bg-[#087F5B] text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Shopkeeper
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="relative animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <Mail className="w-4 h-4 text-slate-500 absolute left-4 top-4" />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Email Address"
+                required
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-sm focus:outline-hidden focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/50 transition placeholder:text-slate-600"
+              />
+            </div>
+
+            <div className="relative animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              <Lock className="w-4 h-4 text-slate-500 absolute left-4 top-4" />
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Secret Password"
+                required
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-sm focus:outline-hidden focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/50 transition placeholder:text-slate-600"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center space-x-2 active:scale-[0.98] shadow-2xl ${
+                tab === 'login' ? 'bg-[#D4AF37] text-[#101C2C]' : 'bg-[#087F5B] text-white'
+              } disabled:opacity-50`}
+            >
+              <span>{loading ? 'Authenticating...' : tab === 'login' ? 'Enter Marketplace' : 'Become a Partner'}</span>
+              {!loading && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </form>
+
+          <div className="text-center pt-4">
+            <button
+              onClick={() => setTab(tab === 'login' ? 'register' : 'login')}
+              className="text-xs font-bold text-slate-500 hover:text-[#D4AF37] transition"
+            >
+              {tab === 'login' ? "Don't have an account? Join Now" : "Already a member? Sign In"}
+            </button>
+          </div>
+
+          {/* Quick Demo Section (Luxury Styled) */}
+          <div className="pt-8 border-t border-white/5 space-y-4">
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest text-center">Fast Track Demo Access</p>
+            <div className="grid grid-cols-3 gap-2">
               <button
-                type="button"
-                onClick={openNewWindowAuth}
-                className="mt-2 w-full flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-bold text-xs shadow-xs transition"
+                onClick={() => handleQuickDemo('customer')}
+                className="flex flex-col items-center p-3 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition group"
               >
-                <span>Authenticate in new window</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <div className="text-[9px] font-black text-slate-500 group-hover:text-white transition">USER</div>
+                <div className="text-[11px] font-black text-white/80">Shehbaz</div>
+              </button>
+              <button
+                onClick={() => handleQuickDemo('provider')}
+                className="flex flex-col items-center p-3 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition group"
+              >
+                <div className="text-[9px] font-black text-slate-500 group-hover:text-white transition">PROVIDER</div>
+                <div className="text-[11px] font-black text-white/80">Tariq M.</div>
+              </button>
+              <button
+                onClick={() => handleQuickDemo('admin')}
+                className="flex flex-col items-center p-3 rounded-2xl bg-[#D4AF37]/5 border border-[#D4AF37]/10 hover:bg-[#D4AF37]/10 transition group"
+              >
+                <div className="text-[9px] font-black text-[#D4AF37]/50 group-hover:text-[#D4AF37] transition">ADMIN</div>
+                <div className="text-[11px] font-black text-[#D4AF37]/80 group-hover:text-[#D4AF37] transition font-mono tracking-tighter italic">KARACHI_HQ</div>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl mb-4">
-          <button
-            type="button"
-            onClick={() => { setTab('login'); setLocalError(null); setAuthError(null); }}
-            className={`py-2 text-xs font-bold rounded-xl transition ${
-              tab === 'login' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Customer Login
-          </button>
-          <button
-            type="button"
-            onClick={() => { setTab('register'); setLocalError(null); setAuthError(null); }}
-            className={`py-2 text-xs font-bold rounded-xl transition ${
-              tab === 'register' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
-
-        {displayError && (
-          <div className="mb-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 space-y-1.5">
-            <div className="flex items-center space-x-2 font-semibold">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{displayError}</span>
-            </div>
-            <p className="text-[11px] text-red-600 pl-6">
-              Recovery hint: Make sure your email and password are correct, or tap <strong>Authenticate in new window</strong> above to bypass browser cookie blocking.
-            </p>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {tab === 'register' && (
-            <>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Name *
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="e.g. Shehbaz Abro"
-                    required
-                    className="w-full text-xs pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Karachi Mobile Number *
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="tel"
-                    value={mobile}
-                    onChange={e => setMobile(e.target.value)}
-                    placeholder="0333-1234567"
-                    required
-                    className="w-full text-xs pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Account Purpose
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRole('customer')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold ${
-                      role === 'customer'
-                        ? 'bg-blue-50 border-blue-600 text-blue-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    Customer / Client
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('provider')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold ${
-                      role === 'provider'
-                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    Business Owner
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Email Address *
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="youremail@example.com"
-                required
-                className="w-full text-xs pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Password *
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Enter password"
-                required
-                className="w-full text-xs pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-md transition disabled:opacity-50 mt-1"
-          >
-            {loading ? 'Processing...' : tab === 'login' ? 'Sign In' : 'Create Account'}
-          </button>
-        </form>
-
-        {/* Demo Fast-Switch Logins */}
-        <div className="mt-5 pt-4 border-t border-slate-200">
-          <p className="text-[11px] font-bold text-slate-500 mb-2 flex items-center space-x-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>One-Click Test Demo Logins:</span>
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => handleQuickDemo('customer')}
-              className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center transition"
-            >
-              <div className="text-[11px] font-bold text-slate-800">Customer</div>
-              <div className="text-[9px] text-slate-500 truncate">Shehbaz Abro</div>
-            </button>
-
-            <button
-              onClick={() => handleQuickDemo('provider')}
-              className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center transition"
-            >
-              <div className="text-[11px] font-bold text-slate-800">Business</div>
-              <div className="text-[9px] text-slate-500 truncate">Tariq Mehmood</div>
-            </button>
-
-            <button
-              onClick={() => handleQuickDemo('admin')}
-              className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-center transition"
-            >
-              <div className="text-[11px] font-bold text-amber-900">Admin</div>
-              <div className="text-[9px] text-amber-700 truncate">Karachi HQ</div>
-            </button>
+        {/* Footer Area with security notice */}
+        <div className="p-6 bg-black/20 border-t border-white/5 text-center">
+          <div className="flex items-center justify-center space-x-2 text-slate-600 text-[10px] font-bold">
+            <Shield className="w-3 h-3" />
+            <span className="uppercase tracking-widest italic">SECURED_BY_SP_ENCRYPTION_V2.0</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
-

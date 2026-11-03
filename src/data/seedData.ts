@@ -3,40 +3,56 @@ import { Business, Review, User } from '../types';
 export const INITIAL_USERS: User[] = [
   {
     id: 'user-admin',
+    username: 'karachihq',
     name: 'Administrator (Karachi HQ)',
     email: 'admin@serviceprovider.pk',
     mobile: '0300-8273641',
     role: 'admin',
     savedFavorites: ['biz-1', 'biz-3', 'biz-7'],
-    createdAt: '2026-01-01T10:00:00.000Z'
+    createdAt: '2026-01-01T10:00:00.000Z',
+    isEmailVerified: true,
+    isMobileVerified: true,
+    password: 'password123'
   },
   {
     id: 'user-customer-1',
+    username: 'shehbaz786',
     name: 'Shehbaz Abro',
     email: 'shehbaz@example.com',
     mobile: '0333-2891045',
     role: 'customer',
     savedFavorites: ['biz-1', 'biz-4', 'biz-10'],
-    createdAt: '2026-01-15T12:30:00.000Z'
+    createdAt: '2026-01-15T12:30:00.000Z',
+    isEmailVerified: true,
+    isMobileVerified: true,
+    password: 'password123'
   },
   {
     id: 'user-customer-2',
+    username: 'ayeshasiddiqui',
     name: 'Ayesha Siddiqui',
     email: 'ayesha.khi@gmail.com',
     mobile: '0321-9482711',
     role: 'customer',
     savedFavorites: ['biz-6', 'biz-12'],
-    createdAt: '2026-02-10T14:20:00.000Z'
+    createdAt: '2026-02-10T14:20:00.000Z',
+    isEmailVerified: true,
+    isMobileVerified: true,
+    password: 'password123'
   },
   {
     id: 'user-provider-1',
+    username: 'ustadtariq',
     name: 'Ustad Tariq Mehmood',
     email: 'tariq@electrician.pk',
     mobile: '0300-2415892',
     role: 'provider',
     savedFavorites: [],
     businessId: 'biz-1',
-    createdAt: '2026-01-05T09:15:00.000Z'
+    createdAt: '2026-01-05T09:15:00.000Z',
+    isEmailVerified: true,
+    isMobileVerified: true,
+    password: 'password123'
   }
 ];
 
