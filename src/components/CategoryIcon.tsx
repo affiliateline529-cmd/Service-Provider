@@ -2,10 +2,10 @@ import React from 'react';
 import {
   Zap, Wrench, Snowflake, Smartphone, Laptop, Cpu, Hammer, Lightbulb,
   Utensils, ShoppingBag, Shirt, Footprints, Sparkles, Scissors, PenTool,
-  Car, Bike, Droplet, Paintbrush, Building, Brush, ShieldAlert,
+  Car, Bike, Droplet, Droplets, Paintbrush, Building, Brush, ShieldAlert,
   Tv, Camera, Wifi, Code, Palette, Printer, Video, Truck, Plane,
   GraduationCap, PartyPopper, Armchair, Activity, MoreHorizontal,
-  Home, CheckCircle2, Shield
+  Home, CheckCircle2, Shield, Wind, Monitor, HardDrive
 } from 'lucide-react';
 
 interface CategoryIconProps {
@@ -52,6 +52,10 @@ export const CategoryIcon: React.FC<CategoryIconProps> = ({ name, className = 'w
     case 'Activity': return <Activity className={className} />;
     case 'CheckCircle2': return <CheckCircle2 className={className} />;
     case 'Shield': return <Shield className={className} />;
+    case 'Droplets': return <Droplets className={className} />;
+    case 'Wind': return <Wind className={className} />;
+    case 'Monitor': return <Monitor className={className} />;
+    case 'HardDrive': return <HardDrive className={className} />;
     default: return <MoreHorizontal className={className} />;
   }
 };

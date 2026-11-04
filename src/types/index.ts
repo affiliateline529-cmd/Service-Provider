@@ -254,6 +254,19 @@ export interface WeeklyCommissionReport {
   }[];
 }
 
+export interface Product {
+  id: string;
+  businessId: string;
+  businessName: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+  stockStatus: 'in_stock' | 'out_of_stock';
+  createdAt: string;
+}
+
 export interface AppConfig {
   defaultCommissionPercentage: number;
   easypaisaNumber: string;

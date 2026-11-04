@@ -305,7 +305,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#101C2C]/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-[#F3F4F6] w-full max-w-7xl h-[94vh] rounded-[32px] shadow-2xl relative flex flex-col overflow-hidden border border-[#D4AF37]/20">
+      <div className="bg-[#F3F4F6] w-full h-[94vh] rounded-[32px] shadow-2xl relative flex flex-col overflow-hidden border border-[#D4AF37]/20 px-4 lg:px-8">
         
         {/* Luxury Header */}
         <div className="bg-[#101C2C] text-white p-5 sm:p-6 flex items-center justify-between border-b border-[#D4AF37]/30">
@@ -420,7 +420,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <p className="mt-6 text-[10px] font-black text-[#101C2C]/40 uppercase tracking-[0.3em]">Authorized Session Active</p>
             </div>
           ) : (
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="w-full space-y-6">
               
               {/* Tab: Verify Shop */}
               {activeTab === 'pending' && (
@@ -734,7 +734,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* Config Tab */}
               {activeTab === 'config' && (
-                <div className="max-w-2xl mx-auto py-10 space-y-8">
+                <div className="w-full py-10 space-y-8">
                   <div className="bg-white rounded-[40px] p-10 border border-gray-200 shadow-xl space-y-8 relative overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#D4AF37] via-[#101C2C] to-[#087F5B]" />
                     <div className="flex items-center space-x-6">

@@ -10,7 +10,7 @@ import { INITIAL_BUSINESSES, INITIAL_REVIEWS, INITIAL_USERS } from './src/data/s
 import { 
   Business, Review, User, AdRequest, AffiliateReferral, PayoutRequest,
   Booking, CommissionRecord, WeeklyCommissionReport, AppConfig,
-  RegistrationPackage, PaymentRequest, ChatMessage, AppNotification, AdminAuditLog
+  RegistrationPackage, PaymentRequest, ChatMessage, AppNotification, AdminAuditLog, Product
 } from './src/types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -77,6 +77,7 @@ interface DatabaseSchema {
   notifications: AppNotification[];
   auditLogs: AdminAuditLog[];
   otps: OTPRecord[];
+  products: Product[];
 }
 
 function initDb(): DatabaseSchema {
@@ -103,6 +104,7 @@ function initDb(): DatabaseSchema {
       if (!parsed.notifications) parsed.notifications = [];
       if (!parsed.auditLogs) parsed.auditLogs = [];
       if (!parsed.otps) parsed.otps = [];
+      if (!parsed.products) parsed.products = [];
       return parsed;
     } catch (err) {
       console.error('Error reading database file, re-seeding:', err);
@@ -128,7 +130,8 @@ function initDb(): DatabaseSchema {
     chatMessages: [],
     notifications: [],
     auditLogs: [],
-    otps: []
+    otps: [],
+    products: []
   };
 
   saveDb(initialData);
@@ -301,6 +304,54 @@ app.get('/api/businesses', (req: Request, res: Response) => {
   }
 
   res.json({ success: true, count: results.length, data: results });
+});
+
+// Products catalogue
+app.get('/api/products', (req: Request, res: Response) => {
+  const { search, category, businessId } = req.query;
+  let results = [...db.products];
+
+  if (businessId) {
+    results = results.filter(p => p.businessId === businessId);
+  }
+
+  if (category && category !== 'all') {
+    results = results.filter(p => p.category.toLowerCase() === String(category).toLowerCase());
+  }
+
+  if (search && String(search).trim() !== '') {
+    const query = String(search).trim().toLowerCase();
+    results = results.filter(p => 
+      p.name.toLowerCase().includes(query) || 
+      p.description.toLowerCase().includes(query) ||
+      p.category.toLowerCase().includes(query)
+    );
+  }
+
+  res.json({ success: true, count: results.length, data: results });
+});
+
+app.post('/api/products', (req: Request, res: Response) => {
+  const { businessId, name, description, price, category, image } = req.body;
+  const business = db.businesses.find(b => b.id === businessId);
+  if (!business) return res.status(404).json({ success: false, message: 'Business not found' });
+
+  const newProduct: Product = {
+    id: `prod-${Date.now()}`,
+    businessId,
+    businessName: business.businessName,
+    name,
+    description,
+    price: Number(price),
+    category,
+    image: image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+    stockStatus: 'in_stock',
+    createdAt: new Date().toISOString()
+  };
+
+  db.products.unshift(newProduct);
+  saveDb(db);
+  res.status(201).json({ success: true, data: newProduct });
 });
 
 // Single Business
@@ -995,6 +1046,19 @@ app.get('/api/provider/commissions/:providerId', (req: Request, res: Response) =
     res.json({ success: true, data: records });
 });
 
+// Public metrics
+app.get('/api/public/metrics', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      totalBusinesses: db.businesses.length,
+      totalProducts: db.products.length,
+      totalBookings: db.bookings.length,
+      totalServices: KARACHI_CATEGORIES.length
+    }
+  });
+});
+
 // Admin list metrics
 app.get('/api/admin/metrics', (req, res) => {
   res.json({
@@ -1003,6 +1067,7 @@ app.get('/api/admin/metrics', (req, res) => {
       totalCustomers: db.users.filter(u => u.role === 'customer').length,
       totalProviders: db.users.filter(u => u.role === 'provider').length,
       totalBusinesses: db.businesses.length,
+      totalProducts: db.products.length,
       totalBookings: db.bookings.length,
       pendingBookings: db.bookings.filter(b => b.status === 'pending').length,
       completedBookings: db.bookings.filter(b => b.status === 'completed').length,
@@ -1047,7 +1112,8 @@ app.post('/api/reset-data', (req: Request, res: Response) => {
     chatMessages: [],
     notifications: [],
     auditLogs: [],
-    otps: []
+    otps: [],
+    products: []
   };
   saveDb(db);
   res.json({ success: true, message: 'Database reset.' });
